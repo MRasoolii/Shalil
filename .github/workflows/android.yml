@@ -3,43 +3,55 @@ name: Build Shalil APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      # 1. Download project files
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Install Java 17
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # 3. Configure Android SDK
       - name: Configure Android SDK
         run: |
           echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
           echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
           echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
 
-      - name: Install SDK packages
+      # 4. Install Android SDK packages
+      - name: Install Android SDK
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
+      # 5. Install Gradle 8.9
       - name: Install Gradle
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gradle
+          wget https://services.gradle.org/distributions/gradle-8.9-bin.zip -O /tmp/gradle.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt
+          echo "/opt/gradle-8.9/bin" >> $GITHUB_PATH
+          /opt/gradle-8.9/bin/gradle --version
 
-      - name: Build APK
-        run: gradle assembleDebug
+      # 6. Build APK
+      - name: Build Shalil APK
+        run: |
+          gradle assembleDebug --stacktrace
 
+      # 7. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Shalil-APK
+          name: Shalil-Android-APK
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
